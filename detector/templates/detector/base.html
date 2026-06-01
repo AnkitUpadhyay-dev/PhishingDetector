@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SENTINELMAIL{% endblock %} — SOC Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="font-body text-gray-200 scanline">
+  <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <a href="{% url 'index' %}" class="flex items-center gap-3">
+          <span class="text-2xl">🛡️</span>
+          <span class="font-semibold text-white text-lg">SENTINELMAIL</span>
+        </a>
+        <div class="flex items-center gap-4">
+          <a href="{% url 'index' %}" class="text-sm text-gray-400 hover:text-cyan-400 transition">Analyze</a>
+          <a href="{% url 'history' %}" class="text-sm text-gray-400 hover:text-cyan-400 transition">History</a>
+          <button id="theme-toggle" type="button" class="btn-ghost text-sm" title="Toggle theme">◐ Theme</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="border-b border-gray-800 bg-gray-900/50">
+    <div class="max-w-7xl mx-auto px-4 py-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="stat-pill">
+        <p class="text-xs text-gray-500 uppercase tracking-wider">Total Analyzed</p>
+        <p class="text-xl font-mono-data text-cyan-400">{{ stats_total }}</p>
+      </div>
+      <div class="stat-pill">
+        <p class="text-xs text-gray-500 uppercase tracking-wider">Avg Threat Score</p>
+        <p class="text-xl font-mono-data text-white">{{ stats_avg_score }}%</p>
+      </div>
+      <div class="stat-pill">
+        <p class="text-xs text-gray-500 uppercase tracking-wider">Phishing Today</p>
+        <p class="text-xl font-mono-data text-red-400">{{ stats_phishing_today }}</p>
+      </div>
+      <div class="stat-pill hidden md:block">
+        <p class="text-xs text-gray-500 uppercase tracking-wider">Status</p>
+        <p class="text-sm text-green-400 font-mono-data">● SOC ONLINE</p>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-gray-800 mt-12 py-6 text-center text-gray-600 text-sm">
+    SENTINELMAIL — Enterprise Phishing Detection · Powered by AI
+  </footer>
+
+  <script src="{% static 'js/app.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

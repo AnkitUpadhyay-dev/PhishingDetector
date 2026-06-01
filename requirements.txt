@@ -1,0 +1,7 @@
+django>=4.2
+djangorestframework
+google-generativeai
+openai
+beautifulsoup4
+python-decouple
+requests

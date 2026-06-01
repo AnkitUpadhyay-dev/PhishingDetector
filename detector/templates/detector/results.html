@@ -1,0 +1,154 @@
+{% extends 'detector/base.html' %}
+{% load detector_extras %}
+
+{% block title %}Scan Results{% endblock %}
+
+{% block content %}
+<div id="threat-score-data" data-score="{{ scan.phishing_probability }}" class="hidden"></div>
+
+<!-- Actions bar -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+  <div>
+    <a href="{% url 'index' %}" class="text-sm text-cyan-400 hover:underline">← New Analysis</a>
+    <h1 class="text-2xl font-bold text-white mt-1">Threat Analysis Report</h1>
+    <p class="text-gray-500 text-sm font-mono-data">{{ scan.created_at }} · ID {{ scan.id }}</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <button id="copy-report-btn" type="button" class="btn-ghost text-sm">📋 Copy Report</button>
+    <a href="{% url 'export_json' scan.id %}" class="btn-ghost text-sm inline-block">⬇ Export JSON</a>
+    <button type="button" class="btn-ghost text-sm" onclick="navigator.clipboard.writeText(window.location.href)">🔗 Copy Share Link</button>
+  </div>
+</div>
+<span id="copy-toast" class="hidden fixed bottom-6 right-6 bg-cyan-900 text-cyan-300 px-4 py-2 rounded-lg text-sm z-50">Copied to clipboard!</span>
+
+<!-- Header: gauge + summary -->
+<div class="grid md:grid-cols-3 gap-6 mb-8">
+  <div class="card-soc p-6 text-center {% if scan.threat_level == 'HIGH' or scan.threat_level == 'CRITICAL' %}glow-high{% endif %} md:col-span-1">
+    <div class="gauge-wrap">
+      <svg class="gauge-svg w-full h-full" viewBox="0 0 200 200">
+        <circle class="gauge-bg" cx="100" cy="100" r="85"></circle>
+        <circle id="gauge-fill" class="gauge-fill" cx="100" cy="100" r="85"></circle>
+      </svg>
+      <div class="gauge-value">
+        <span id="gauge-percent" class="text-4xl font-bold font-mono-data text-white">0%</span>
+        <span class="text-xs text-gray-500 uppercase mt-1">Phishing Risk</span>
+      </div>
+    </div>
+    <span class="badge-threat badge-{{ scan.threat_level }} mt-4">{{ scan.threat_level }}</span>
+    <p class="text-xs text-gray-500 mt-2">AI Confidence: <span class="text-cyan-400 font-mono-data">{{ scan.ai_confidence }}%</span></p>
+  </div>
+
+  <div class="card-soc p-6 md:col-span-2 flex flex-col justify-center">
+    <h2 class="text-lg font-semibold text-white mb-2">Executive Summary</h2>
+    <p class="text-gray-300 text-lg leading-relaxed">{{ analysis.summary }}</p>
+    <dl class="grid grid-cols-2 gap-4 mt-6 text-sm">
+      <div>
+        <dt class="text-gray-500">Subject</dt>
+        <dd class="text-white font-mono-data truncate">{{ scan.subject|default:"—" }}</dd>
+      </div>
+      <div>
+        <dt class="text-gray-500">Sender</dt>
+        <dd class="text-white font-mono-data truncate">{{ scan.sender|default:"—" }}</dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
+<!-- Indicator cards 2x3 -->
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+  {% for card in cards %}
+  <div class="card-soc p-5 animate-in stagger-{{ forloop.counter }} {% if card.score >= 70 %}glow-high{% endif %}">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-white flex items-center gap-2">
+        <span>{{ card.icon }}</span> {{ card.label }}
+      </h3>
+      <span class="font-mono-data text-lg {% if card.score >= 70 %}text-red-400{% elif card.score >= 40 %}text-yellow-400{% else %}text-green-400{% endif %}">{{ card.score }}</span>
+    </div>
+    <div class="progress-track mb-3">
+      <div class="progress-fill" data-score="{{ card.score }}" data-level="{{ card.score|score_level }}"></div>
+    </div>
+    {% if card.evidence %}
+    <ul class="text-xs text-gray-400 space-y-1 mb-2">
+      {% for ev in card.evidence|slice:":3" %}
+      <li class="truncate">"{{ ev }}"</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <p class="text-xs text-gray-500">{{ card.explanation }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Why dangerous -->
+<div class="card-soc alert-danger-card p-6 mb-8 animate-in">
+  <h2 class="text-lg font-semibold text-red-400 flex items-center gap-2 mb-3">
+    <span>⚠️</span> Why This Email Is Dangerous
+  </h2>
+  <p id="why-dangerous-text" class="text-gray-300 leading-relaxed">{{ scan.why_dangerous|default:analysis.why_dangerous }}</p>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-8">
+  <!-- Links table -->
+  <div class="card-soc p-5 overflow-x-auto">
+    <h2 class="text-lg font-semibold text-white mb-4">🔗 Extracted Links</h2>
+    <table class="table-soc">
+      <thead>
+        <tr>
+          <th>URL</th>
+          <th>Display</th>
+          <th>Flag</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in analysis.extracted_links %}
+        <tr class="{% if link.is_suspicious %}row-suspicious{% else %}row-safe{% endif %}">
+          <td class="font-mono-data text-xs max-w-[180px] truncate" title="{{ link.url }}">{{ link.url }}</td>
+          <td class="text-xs text-gray-400">{{ link.display_text|default:"—"|truncatechars:24 }}</td>
+          <td>
+            {% if link.is_suspicious %}
+            <span class="text-red-400 font-semibold text-xs">⚠ Suspicious</span>
+            {% else %}
+            <span class="text-green-400 text-xs">✓ Safe</span>
+            {% endif %}
+          </td>
+          <td class="text-xs text-gray-500">{{ link.reason|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-gray-500 text-center py-4">No links extracted</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recommendations -->
+  <div class="card-soc p-5">
+    <h2 class="text-lg font-semibold text-white mb-4">✅ Recommended Actions</h2>
+    <ol class="checklist">
+      {% for rec in analysis.recommendations %}
+      <li class="checklist-item">{{ rec }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>
+
+<!-- Email preview -->
+<div class="card-soc p-6">
+  <h2 class="text-lg font-semibold text-white mb-4">📧 Email Preview</h2>
+  <div class="bg-gray-900/60 rounded-lg p-4 border border-gray-800 text-sm mb-4 font-mono-data">
+    <p><span class="text-gray-500">From:</span> <span class="{% if parsed.reply_to_mismatch %}hl-sender{% endif %}">{{ parsed.from_header|default:scan.sender }}</span></p>
+    {% if parsed.reply_to %}
+    <p><span class="text-gray-500">Reply-To:</span> <span class="{% if parsed.reply_to_mismatch %}hl-sender{% endif %}">{{ parsed.reply_to }}</span></p>
+    {% endif %}
+    <p><span class="text-gray-500">Subject:</span> {{ scan.subject }}</p>
+  </div>
+  <div class="preview-body text-sm text-gray-300 leading-relaxed whitespace-pre-wrap font-mono-data bg-gray-900/40 rounded-lg p-4 border border-gray-800 max-h-96 overflow-y-auto">
+    {{ parsed.body|default:scan.raw_email|highlight_email:parsed }}
+  </div>
+  <p class="text-xs text-gray-600 mt-3">
+    <span class="hl-link">Red underline</span> = suspicious links ·
+    <span class="hl-urgency">Orange highlight</span> = urgency keywords ·
+    <span class="hl-sender">Red text</span> = sender issues
+  </p>
+</div>
+{% endblock %}
